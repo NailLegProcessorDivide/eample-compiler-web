@@ -35,6 +35,7 @@ enum ViewMode {
     ConstProp,
     UnnestAST,
     InitCFG,
+    CleanCFG,
     CFGAnnot,
 }
 
@@ -90,6 +91,17 @@ fn CompilerView<'a>(cx : Scope<'a, RenderCompiler<'a>>) -> Element {
     }
     if view_goal == ViewMode::InitCFG {
         let loc_cfg = compile_function::build_cfg(cx.props.func.as_ref().unwrap());
+        if &loc_cfg != cfg.get() {
+            cfg.set(loc_cfg);
+        }
+        return cx.render( rsx! {
+            div {
+                cfg_renderer::RenderCFG {cfg: cfg.get()}
+            }
+        })
+    }
+    if view_goal == ViewMode::CleanCFG {
+        let loc_cfg = compile_function::clean_cfg(cx.props.func.as_ref().unwrap());
         if &loc_cfg != cfg.get() {
             cfg.set(loc_cfg);
         }
@@ -303,6 +315,17 @@ fn CompilerSelect<'a>(cx : Scope<'a, InputProgram<'a>>) -> Element {
             }
             input {
                 r#type : "radio",
+                id : "clean_cfg",
+                name : "comp_view",
+                value : "clean_cfg",
+                onclick : move |_| comp_view.set(ViewMode::CleanCFG)
+            }
+            label {
+                r#for : "clean_cfg",
+                "clean cfg"
+            }
+            input {
+                r#type : "radio",
                 id : "cfg_annot",
                 name : "comp_view",
                 value : "cfg_annot",
@@ -321,7 +344,7 @@ fn CompilerSelect<'a>(cx : Scope<'a, InputProgram<'a>>) -> Element {
 
 // create a component that renders a div with the text "Hello, world!"
 fn App(cx: Scope) -> Element {
-    let code = use_state(cx, || "bob".to_string());
+    let code = use_state(cx, || include_str!("sample.expl").to_string());
     cx.render(rsx! {
         body {
             style : "background-color:#515151;",

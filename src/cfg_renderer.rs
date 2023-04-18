@@ -6,7 +6,12 @@ use dioxus::prelude::*;
 
 use sample_compiler_lib::block_structure::var_to_string;
 use sample_compiler_lib::live_var_analysis::CFGAnnot;
-use sample_compiler_lib::{block_structure::{CFGEntry, NextBlock, BlockElem, AtomicExp, self, atomic_to_string, test_to_string}, tokens::show_op};
+use sample_compiler_lib::{
+    block_structure::{
+        self, atomic_to_string, test_to_string, AtomicExp, BlockElem, CFGEntry, NextBlock,
+    },
+    tokens::show_op,
+};
 
 #[derive(Props)]
 pub struct ProgramCFG<'a> {
@@ -49,12 +54,12 @@ where
     hasher.finish()
 }
 
-fn string_to_col(s : &str) -> String {
+fn string_to_col(s: &str) -> String {
     let hash = my_hash(s) & 0x7f7f7f + 0x808080;
     format!("#{:06x}", hash)
 }
 
-pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
+pub fn RenderBlockElem<'a>(cx: Scope<'a, ProgramBlockElem<'a>>) -> Element {
     let elm = cx.props.elm;
     let e = match elm {
         BlockElem::AssignOp(v, exp0, op, exp1) => {
@@ -80,7 +85,7 @@ pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
                     "{exp1_name}"
                 }
             }
-        },
+        }
         BlockElem::AssignAtom(v, exp) => {
             let var_name = block_structure::var_to_string(v);
             let var_col = string_to_col(&var_name);
@@ -91,13 +96,13 @@ pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
                     style: "color: {var_col}",
                     "{var_name}"
                 }
-                " = " 
+                " = "
                 span {
                     style: "color: {exp_col}",
                     "{exp_name}"
                 }
             }
-        },
+        }
         BlockElem::Ld(v0, v1, exp) => {
             let var_name0 = block_structure::var_to_string(v0);
             let var_col0 = string_to_col(&var_name0);
@@ -122,7 +127,7 @@ pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
                 }
                 "]"
             }
-        },
+        }
         BlockElem::St(v, exp0, exp1) => {
             let var_name = block_structure::var_to_string(v);
             let var_col = string_to_col(&var_name);
@@ -146,11 +151,11 @@ pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
                     "{exp_name1}"
                 }
             }
-        },
+        }
         BlockElem::Call(r, f, es) => {
             let var_name = match r {
                 Some(r) => block_structure::var_to_string(r),
-                None => "none".to_string()
+                None => "none".to_string(),
             };
             let var_col = string_to_col(&var_name);
 
@@ -172,8 +177,7 @@ pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
                 }
                 " = {f}(" exps ")"
             }
-
-        },
+        }
         BlockElem::BoundCheck(exp0, exp1) => {
             let exp_name0 = atomic_to_string(exp0);
             let exp_col0 = string_to_col(&exp_name0);
@@ -191,7 +195,7 @@ pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
                     "{exp_name1}"
                 }
             }
-        },
+        }
         BlockElem::NullCheck(v) => {
             let var_name = block_structure::var_to_string(v);
             let var_col = string_to_col(&var_name);
@@ -202,22 +206,25 @@ pub fn RenderBlockElem<'a>(cx : Scope<'a, ProgramBlockElem<'a>>) -> Element {
                     "{var_name}"
                 }
             }
-        },
+        }
     };
-    cx.render( rsx! {
+    cx.render(rsx! {
         e
     })
 }
 
-pub fn RenderCFGEntry<'a>(cx : Scope<'a, ProgramCFGEnt<'a>>) -> Element {
+pub fn RenderCFGEntry<'a>(cx: Scope<'a, ProgramCFGEnt<'a>>) -> Element {
     let ent = cx.props.ent;
-    let elems = ent.elems.iter().map(|elm| rsx! { "  " RenderBlockElem {elm: elm} "\n"});
+    let elems = ent
+        .elems
+        .iter()
+        .map(|elm| rsx! { "  " RenderBlockElem {elm: elm} "\n"});
     let next = match &ent.next {
         NextBlock::Next(x) => rsx! {"next: {x}"},
         NextBlock::Branch(t, a, b) => rsx! { "if " test_to_string(t) " then {a} else {b}"},
-        NextBlock::Return(v) => rsx!{ "ret" },
+        NextBlock::Return(v) => rsx! { "ret" },
     };
-    return cx.render( rsx! {
+    return cx.render(rsx! {
         div {
             style: "background-color:#515151",
             "block_num: {ent.bnum}"
@@ -239,7 +246,7 @@ pub fn RenderCFGEntry<'a>(cx : Scope<'a, ProgramCFGEnt<'a>>) -> Element {
     });
 }
 
-pub fn RenderAnnot<'a>(cx : Scope<'a, ProgramAnnot<'a>>) -> Element {
+pub fn RenderAnnot<'a>(cx: Scope<'a, ProgramAnnot<'a>>) -> Element {
     let annot = cx.props.annot;
     let gen = annot.gen.iter().map(|v| {
         let var_name = var_to_string(v);
@@ -274,23 +281,26 @@ pub fn RenderAnnot<'a>(cx : Scope<'a, ProgramAnnot<'a>>) -> Element {
             ", "
         }
     });
-    cx.render( rsx! {
+    cx.render(rsx! {
         div{"gen " gen "\n"}
         div{"kill " kill "\n"}
         div{"live_exit " live_exit "\n"}
     })
 }
 
-pub fn RenderAnnotCFGEntry<'a>(cx : Scope<'a, ProgramAnnotCFGEnt<'a>>) -> Element {
+pub fn RenderAnnotCFGEntry<'a>(cx: Scope<'a, ProgramAnnotCFGEnt<'a>>) -> Element {
     let ent = cx.props.ent;
     let annot = cx.props.annot;
-    let elems = ent.elems.iter().map(|elm| rsx! { "  " RenderBlockElem {elm: elm} "\n"});
+    let elems = ent
+        .elems
+        .iter()
+        .map(|elm| rsx! { "  " RenderBlockElem {elm: elm} "\n"});
     let next = match &ent.next {
         NextBlock::Return(_) => rsx! {"next: ret"},
         NextBlock::Next(x) => rsx! {"next: {x}"},
         NextBlock::Branch(t, a, b) => rsx! { "if " test_to_string(t) " then {a} else {b}"},
     };
-    return cx.render( rsx! {
+    return cx.render(rsx! {
         div {
             style: "background-color:#515151",
             "block_num: {ent.bnum}"
@@ -313,16 +323,24 @@ pub fn RenderAnnotCFGEntry<'a>(cx : Scope<'a, ProgramAnnotCFGEnt<'a>>) -> Elemen
     });
 }
 
-pub fn RenderCFG<'a>(cx : Scope<'a, ProgramCFG<'a>>) -> Element {
-    let cfg = cx.props.cfg.iter().map(|ent| rsx! {div {RenderCFGEntry {ent: ent}}});
-    return cx.render( rsx! {
+pub fn RenderCFG<'a>(cx: Scope<'a, ProgramCFG<'a>>) -> Element {
+    let cfg = cx
+        .props
+        .cfg
+        .iter()
+        .map(|ent| rsx! {div {RenderCFGEntry {ent: ent}}});
+    return cx.render(rsx! {
         cfg
     });
 }
 
-pub fn RenderAnnotCFG<'a>(cx : Scope<'a, ProgramAnnotCFG<'a>>) -> Element {
-    let cfg = cx.props.cfg.iter().map(|(ent, annot)| rsx! {div {RenderAnnotCFGEntry {ent: ent, annot: annot}}});
-    return cx.render( rsx! {
+pub fn RenderAnnotCFG<'a>(cx: Scope<'a, ProgramAnnotCFG<'a>>) -> Element {
+    let cfg = cx
+        .props
+        .cfg
+        .iter()
+        .map(|(ent, annot)| rsx! {div {RenderAnnotCFGEntry {ent: ent, annot: annot}}});
+    return cx.render(rsx! {
         cfg
     });
 }

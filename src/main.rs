@@ -3,7 +3,14 @@ use std::collections::HashSet;
 
 // import the prelude to get access to the `rsx!` macro and the `Scope` and `Element` types
 use dioxus::prelude::*;
-use sample_compiler_lib::{tokens::{self, Token}, source_ast::{self, Func, Prog, Stmt}, type_check, compile, block_structure::{Var, CFGEntry}, compile_function, live_var_analysis::CFGAnnot};
+use sample_compiler_lib::{
+    block_structure::{CFGEntry, Var},
+    compile, compile_function,
+    live_var_analysis::CFGAnnot,
+    source_ast::{self, Func, Prog, Stmt},
+    tokens::{self, Token},
+    type_check,
+};
 
 mod ast_renderer;
 mod cfg_renderer;
@@ -40,16 +47,17 @@ enum ViewMode {
     UnWrite,
 }
 
-fn token_colour(tok : &Token) -> String {
+fn token_colour(tok: &Token) -> String {
     match tok {
         Token::Num(_) => "green",
         Token::Ident(_) => "orange",
         Token::Op(_) | Token::Uop(_) => "fuchsia",
         _ => "blue",
-    }.to_string()
+    }
+    .to_string()
 }
 
-fn CompilerView<'a>(cx : Scope<'a, RenderCompiler<'a>>) -> Element {
+fn CompilerView<'a>(cx: Scope<'a, RenderCompiler<'a>>) -> Element {
     let stmts: &UseState<Vec<Stmt>> = use_state(cx, || Vec::new());
     let cfg: &UseState<Vec<CFGEntry>> = use_state(cx, || Vec::new());
     let cfg_annot: &UseState<Vec<(CFGEntry, CFGAnnot)>> = use_state(cx, || Vec::new());
@@ -59,98 +67,112 @@ fn CompilerView<'a>(cx : Scope<'a, RenderCompiler<'a>>) -> Element {
         if &loc_stmts != stmts.get() {
             stmts.set(loc_stmts);
         }
-        let render_stmts = stmts.get().iter().map(|s| rsx! {ast_renderer::RenderStmt {stmt: s, indent: 1}});
-        return cx.render( rsx! {
+        let render_stmts = stmts
+            .get()
+            .iter()
+            .map(|s| rsx! {ast_renderer::RenderStmt {stmt: s, indent: 1}});
+        return cx.render(rsx! {
             pre {
                 render_stmts
             }
-        })
+        });
     }
     if view_goal == ViewMode::ConstProp {
         let loc_stmts = compile_function::prop_stmts(cx.props.func.as_ref().unwrap());
         if &loc_stmts != stmts.get() {
             stmts.set(loc_stmts);
         }
-        let render_stmts = stmts.get().iter().map(|s| rsx! {ast_renderer::RenderStmt {stmt: s, indent: 1}});
-        return cx.render( rsx! {
+        let render_stmts = stmts
+            .get()
+            .iter()
+            .map(|s| rsx! {ast_renderer::RenderStmt {stmt: s, indent: 1}});
+        return cx.render(rsx! {
             pre {
                 render_stmts
             }
-        })
+        });
     }
     if view_goal == ViewMode::UnnestAST {
         let loc_stmts = compile_function::unnest_stmts(cx.props.func.as_ref().unwrap());
         if &loc_stmts != stmts.get() {
             stmts.set(loc_stmts);
         }
-        let render_stmts = stmts.get().iter().map(|s| rsx! {ast_renderer::RenderStmt {stmt: s, indent: 1}});
-        return cx.render( rsx! {
+        let render_stmts = stmts
+            .get()
+            .iter()
+            .map(|s| rsx! {ast_renderer::RenderStmt {stmt: s, indent: 1}});
+        return cx.render(rsx! {
             pre {
                 render_stmts
             }
-        })
+        });
     }
     if view_goal == ViewMode::InitCFG {
         let loc_cfg = compile_function::build_cfg(cx.props.func.as_ref().unwrap());
         if &loc_cfg != cfg.get() {
             cfg.set(loc_cfg);
         }
-        return cx.render( rsx! {
+        return cx.render(rsx! {
             div {
                 cfg_renderer::RenderCFG {cfg: cfg.get()}
             }
-        })
+        });
     }
     if view_goal == ViewMode::CleanCFG {
         let loc_cfg = compile_function::clean_cfg(cx.props.func.as_ref().unwrap());
         if &loc_cfg != cfg.get() {
             cfg.set(loc_cfg);
         }
-        return cx.render( rsx! {
+        return cx.render(rsx! {
             div {
                 cfg_renderer::RenderCFG {cfg: cfg.get()}
             }
-        })
+        });
     }
     if view_goal == ViewMode::CFGAnnot {
-        let loc_cfg = compile_function::build_annot_cfg(cx.props.globals.as_ref().unwrap(), cx.props.func.as_ref().unwrap());
+        let loc_cfg = compile_function::build_annot_cfg(
+            cx.props.globals.as_ref().unwrap(),
+            cx.props.func.as_ref().unwrap(),
+        );
         if &loc_cfg != cfg_annot.get() {
             cfg_annot.set(loc_cfg);
         }
-        return cx.render( rsx! {
+        return cx.render(rsx! {
             div {
                 cfg_renderer::RenderAnnotCFG {cfg: cfg_annot.get()}
             }
-        })
+        });
     }
     if view_goal == ViewMode::UnWrite {
-        let loc_cfg = compile_function::remove_unused_writes(cx.props.globals.as_ref().unwrap(), cx.props.func.as_ref().unwrap());
+        let loc_cfg = compile_function::remove_unused_writes(
+            cx.props.globals.as_ref().unwrap(),
+            cx.props.func.as_ref().unwrap(),
+        );
         if &loc_cfg != cfg_annot.get() {
             cfg_annot.set(loc_cfg);
         }
-        return cx.render( rsx! {
+        return cx.render(rsx! {
             div {
                 cfg_renderer::RenderAnnotCFG {cfg: cfg_annot.get()}
             }
-        })
+        });
     }
-    return cx.render( rsx! {
+    return cx.render(rsx! {
         pre {
         }
-    })
-
+    });
 }
 
-fn FrontEndView<'a>(cx : Scope<'a, RenderProgram<'a>>) -> Element {
+fn FrontEndView<'a>(cx: Scope<'a, RenderProgram<'a>>) -> Element {
     let view_goal = cx.props.goal;
     let comp_view: &UseState<Option<Prog>> = use_state(cx, || None);
     let function: &UseState<Option<Func>> = use_state(cx, || None);
     let globals: &UseState<Option<HashSet<Var>>> = use_state(cx, || None);
     let function_sel = use_state(cx, || 0);
     let toks = match tokens::lex(cx.props.input_program, 0, 0) {
-        Ok(toks) => { toks },
+        Ok(toks) => toks,
         Err(err) => {
-            return cx.render( rsx! {
+            return cx.render(rsx! {
                 pre { err }
             })
         }
@@ -159,11 +181,17 @@ fn FrontEndView<'a>(cx : Scope<'a, RenderProgram<'a>>) -> Element {
         let mut prev_loc = 0;
         let mut tokens = Vec::new();
         for tok in toks {
-            tokens.push(((if prev_loc != tok.loc {"\n"} else {""}).to_string() + &tokens::show_token(&tok.tok), token_colour(&tok.tok)));
+            tokens.push((
+                (if prev_loc != tok.loc { "\n" } else { "" }).to_string()
+                    + &tokens::show_token(&tok.tok),
+                token_colour(&tok.tok),
+            ));
             prev_loc = tok.loc;
         }
-        let f_tokens = tokens.iter().map(|(t, col)| rsx! { span { style : "background-color:{col}", t.clone()} " " });
-    
+        let f_tokens = tokens
+            .iter()
+            .map(|(t, col)| rsx! { span { style : "background-color:{col}", t.clone()} " " });
+
         return cx.render(rsx! {
             div {
                 pre { f_tokens }
@@ -171,9 +199,9 @@ fn FrontEndView<'a>(cx : Scope<'a, RenderProgram<'a>>) -> Element {
         });
     }
     let mut prog = match source_ast::parse_program(&toks) {
-        Ok(prog) => { prog },
+        Ok(prog) => prog,
         Err(err) => {
-            return cx.render( rsx! {
+            return cx.render(rsx! {
                 pre { err }
             })
         }
@@ -183,17 +211,16 @@ fn FrontEndView<'a>(cx : Scope<'a, RenderProgram<'a>>) -> Element {
             if *cv != prog {
                 comp_view.set(Some(prog));
             }
-            return cx.render( rsx! {
+            return cx.render(rsx! {
                 ast_renderer::RenderProg {inp: cv}
             });
-        }
-        else {
+        } else {
             comp_view.set(Some(prog));
-            return cx.render( rsx! {div {}});
+            return cx.render(rsx! {div {}});
         }
     }
     if let Some(err) = type_check::type_prog(&mut prog) {
-        return cx.render( rsx! {
+        return cx.render(rsx! {
             pre { err }
         });
     }
@@ -205,17 +232,16 @@ fn FrontEndView<'a>(cx : Scope<'a, RenderProgram<'a>>) -> Element {
     }
     if view_goal == ViewMode::TypeCheck {
         if let Some(cv) = comp_view.get() {
-            return cx.render( rsx! {
+            return cx.render(rsx! {
                 ast_renderer::RenderProg {inp: cv}
             });
-        }
-        else {
+        } else {
             comp_view.set(Some(prog));
-            return cx.render( rsx! {div {}});
+            return cx.render(rsx! {div {}});
         }
     }
     if comp_view.get().as_ref().unwrap().funcs.first() == None {
-        return cx.render( rsx! {
+        return cx.render(rsx! {
             div { "no func" }
         });
     }
@@ -225,25 +251,28 @@ fn FrontEndView<'a>(cx : Scope<'a, RenderProgram<'a>>) -> Element {
         function.set(loc_func);
     }
 
-    let loc_globals : HashSet<Var> = HashSet::from_iter(prog.globals.iter().map(|glob| compile::id_to_var(&glob.var_name)));
+    let loc_globals: HashSet<Var> = HashSet::from_iter(
+        prog.globals
+            .iter()
+            .map(|glob| compile::id_to_var(&glob.var_name)),
+    );
     if &Some(loc_globals.clone()) != globals.get() {
         globals.set(Some(loc_globals));
     }
     //let globals : HashSet<Var> = HashSet::from_iter(prog.globals.iter().map(|glob| compile::id_to_var(&glob.var_name)));
     if function.get().is_some() && globals.get().is_some() {
-        return cx.render( rsx! {
+        return cx.render(rsx! {
             div { "choose func" }
             div { CompilerView {func: function.get(), globals: globals.get(), goal: view_goal} }
         });
-    }
-    else {
-        return cx.render( rsx! {
+    } else {
+        return cx.render(rsx! {
             div { "choose func" }
         });
     }
 }
 
-fn CompilerSelect<'a>(cx : Scope<'a, InputProgram<'a>>) -> Element {
+fn CompilerSelect<'a>(cx: Scope<'a, InputProgram<'a>>) -> Element {
     let comp_view = use_state(cx, || ViewMode::Parser);
 
     cx.render(rsx! {
@@ -360,9 +389,8 @@ fn CompilerSelect<'a>(cx : Scope<'a, InputProgram<'a>>) -> Element {
             }
         }
         rsx! {FrontEndView { input_program: cx.props.input_program, goal: *comp_view.get() }}
-        
-    })
 
+    })
 }
 
 // create a component that renders a div with the text "Hello, world!"
@@ -406,4 +434,3 @@ fn main() {
     // launch the web app
     dioxus_web::launch(App);
 }
-

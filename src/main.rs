@@ -37,6 +37,7 @@ enum ViewMode {
     InitCFG,
     CleanCFG,
     CFGAnnot,
+    UnWrite,
 }
 
 fn token_colour(tok : &Token) -> String {
@@ -113,6 +114,17 @@ fn CompilerView<'a>(cx : Scope<'a, RenderCompiler<'a>>) -> Element {
     }
     if view_goal == ViewMode::CFGAnnot {
         let loc_cfg = compile_function::build_annot_cfg(cx.props.globals.as_ref().unwrap(), cx.props.func.as_ref().unwrap());
+        if &loc_cfg != cfg_annot.get() {
+            cfg_annot.set(loc_cfg);
+        }
+        return cx.render( rsx! {
+            div {
+                cfg_renderer::RenderAnnotCFG {cfg: cfg_annot.get()}
+            }
+        })
+    }
+    if view_goal == ViewMode::UnWrite {
+        let loc_cfg = compile_function::remove_unused_writes(cx.props.globals.as_ref().unwrap(), cx.props.func.as_ref().unwrap());
         if &loc_cfg != cfg_annot.get() {
             cfg_annot.set(loc_cfg);
         }
@@ -334,6 +346,17 @@ fn CompilerSelect<'a>(cx : Scope<'a, InputProgram<'a>>) -> Element {
             label {
                 r#for : "cfg_annot",
                 "lva"
+            }
+            input {
+                r#type : "radio",
+                id : "rem_write",
+                name : "comp_view",
+                value : "rem_write",
+                onclick : move |_| comp_view.set(ViewMode::UnWrite)
+            }
+            label {
+                r#for : "rem_write",
+                "unused writes"
             }
         }
         rsx! {FrontEndView { input_program: cx.props.input_program, goal: *comp_view.get() }}

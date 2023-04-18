@@ -213,9 +213,9 @@ pub fn RenderCFGEntry<'a>(cx : Scope<'a, ProgramCFGEnt<'a>>) -> Element {
     let ent = cx.props.ent;
     let elems = ent.elems.iter().map(|elm| rsx! { "  " RenderBlockElem {elm: elm} "\n"});
     let next = match &ent.next {
-        NextBlock::Return(_) => rsx! {"next: ret"},
         NextBlock::Next(x) => rsx! {"next: {x}"},
         NextBlock::Branch(t, a, b) => rsx! { "if " test_to_string(t) " then {a} else {b}"},
+        NextBlock::Return(v) => rsx!{ "ret" },
     };
     return cx.render( rsx! {
         div {
